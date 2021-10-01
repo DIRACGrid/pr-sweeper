@@ -382,13 +382,13 @@ def cherryPickPr(
             f"     --label 'sweep:from {os.path.basename(source_branch)}' " + "\\",
             f"     --base {{tbranch}} " + "\\",
             f"     --repo {project_name} " + "\\",
-            f"     --title '{pr_title}' " + "\\",
-            f"     --body '{body_text}",
+            f"     --title $'" + pr_title.replace("'", "\\'") + "' " + "\\",
+            f"     --body $'" + body_text.replace("'", "\\'") + "'",
         ]
         # only create PR if cherry-pick succeeded
         if failed:
             logger.critical(
-                "Failed to cherry-pick '{merge_commit}' into '{tbranch}':\n"
+                f"Failed to cherry-pick '{merge_commit}' into '{tbranch}':\n"
                 "***** Hint: check merge conflicts on a local copy of this repository\n"
                 "**********************************************\n"
                 "%s\n"
@@ -453,7 +453,10 @@ def cherryPickPr(
                     f"  cherry-pick {merge_commit} into {tbranch} failed",
                     f"  check merge conflicts on a local copy of this repository",
                     f"  ```bash",
-                    "  " + "\n  ".join(fixer_instructions),
+                    "  "
+                    + "\n  ".join(fixer_instructions).format(
+                        tbranch=tbranch, merge_commit=merge_commit
+                    ),
                     f"  ```",
                 ]
             # add label to original PR indicating cherry-pick problem
