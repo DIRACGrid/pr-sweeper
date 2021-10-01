@@ -157,6 +157,7 @@ def cherryPickPr(
     pr_repo,
     strategy,
     project_name,
+    pr_project_name,
     dry_run=False,
 ):
     """
@@ -372,15 +373,15 @@ def cherryPickPr(
         )
         fixer_instructions = [
             f"git fetch upstream",
-            f"git checkout upstream/{{tbranch}} -b {cherry_pick_branch}",
-            f"git cherry-pick -m 1 {{merge_commit}}",
+            f"git checkout upstream/{tbranch} -b {cherry_pick_branch}",
+            f"git cherry-pick -m 1 {merge_commit}",
             f"# Fix the conflicts",
             f"git cherry-pick --continue",
             f"",
             f"# If you have the GitHub CLI installed the PR can be made with",
             f"gh pr create " + "\\",
             f"     --label 'sweep:from {os.path.basename(source_branch)}' " + "\\",
-            f"     --base {{tbranch}} " + "\\",
+            f"     --base {tbranch} " + "\\",
             f"     --repo {project_name} " + "\\",
             f"     --title $'" + pr_title.replace("'", "\\'") + "' " + "\\",
             f"     --body $'" + body_text.replace("'", "\\'") + "'",
@@ -393,18 +394,19 @@ def cherryPickPr(
                 "**********************************************\n"
                 "%s\n"
                 "**********************************************\n",
-                "\n".join(fixer_instructions).format(
-                    tbranch=tbranch, merge_commit=merge_commit
-                ),
+                "\n".join(fixer_instructions),
             )
-            failed_branches.add((tbranch, merge_commit))
+            failed_branches.add((tbranch, merge_commit, "\n".join(fixer_instructions)))
         else:
             logger.info("cherry-picked '%s' into '%s'", merge_commit, tbranch)
 
             # create merge request
             try:
                 pr = repo.create_pull(
-                    title=pr_title, body=pr_desc, head=cherry_pick_branch, base=tbranch
+                    title=pr_title,
+                    body=pr_desc,
+                    head=f"{pr_project_name}:{cherry_pick_branch}",
+                    base=tbranch,
                 )
             except GithubException as e:
                 logger.critical(
@@ -413,7 +415,13 @@ def cherryPickPr(
                     tbranch,
                     e.data["message"],
                 )
-                failed_branches.add((tbranch, merge_commit))
+                failed_branches.add(
+                    (
+                        tbranch,
+                        merge_commit,
+                        f"Open a PR from {pr_project_name}:{cherry_pick_branch} to {tbranch}",
+                    )
+                )
             else:
                 good_branches.add(tbranch)
                 pr.create_issue_comment(body=body_text)
@@ -447,16 +455,13 @@ def cherryPickPr(
             comment_lines += ["Successful:"] + [f"* {x}" for x in sorted(good_branches)]
         if failed_branches:
             comment_lines += ["Failed:"]
-            for tbranch, merge_commit in failed_branches:
+            for tbranch, merge_commit, failed_branches in failed_branches:
                 comment_lines += [
                     f"* **{tbranch}**",
                     f"  cherry-pick {merge_commit} into {tbranch} failed",
                     f"  check merge conflicts on a local copy of this repository",
                     f"  ```bash",
-                    "  "
-                    + "\n  ".join(fixer_instructions).format(
-                        tbranch=tbranch, merge_commit=merge_commit
-                    ),
+                    f"  " + failed_branches.replace("\n", "\n  "),
                     f"  ```",
                 ]
             # add label to original PR indicating cherry-pick problem
@@ -644,6 +649,7 @@ def main():
             args.strategy,
             dry_run=args.dry_run,
             project_name=args.project_name,
+            pr_project_name=args.pr_project_name,
         )
 
     # change back to initial directory
