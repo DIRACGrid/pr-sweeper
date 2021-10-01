@@ -457,9 +457,11 @@ def cherryPickPr(
             ),
         ]
         if good_branches:
-            comment_lines += ["Successful:"] + [f"* {x}" for x in sorted(good_branches)]
+            comment_lines += ["\n### Successful:"] + [
+                f"* {x}" for x in sorted(good_branches)
+            ]
         if failed_branches:
-            comment_lines += ["Failed:"]
+            comment_lines += ["\n### Failed:"]
             for tbranch, merge_commit, failed_branches in failed_branches:
                 comment_lines += [
                     f"* **{tbranch}**",
