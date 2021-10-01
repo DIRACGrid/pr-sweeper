@@ -419,7 +419,7 @@ def cherryPickPr(
                     (
                         tbranch,
                         merge_commit,
-                        f"Open a PR from {pr_project_name}:{cherry_pick_branch} to {tbranch}",
+                        f"Open a PR from {os.path.dirname(pr_project_name)}:{cherry_pick_branch} to {tbranch}",
                     )
                 )
             else:
