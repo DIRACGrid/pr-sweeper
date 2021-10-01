@@ -136,7 +136,7 @@ def getListOfMergeCommits(branch, since, until):
   return hash_list
 
 
-def cherryPickPr(merge_commit, source_branch, target_branch_rules, repo, strategy, dry_run=False):
+def cherryPickPr(merge_commit, source_branch, target_branch_rules, repo, strategy, project_name, dry_run=False):
   """
   Try cherry picking into different branch
   """
@@ -298,63 +298,83 @@ def cherryPickPr(merge_commit, source_branch, target_branch_rules, repo, strateg
       else:
         logger.critical("invalid strategy! Choose merge or cheery-pick for strategy")
         failed = True
+
+    pr_title = _comment_1_ + tbranch + _comment_2_
+    body_text = "Adding original author @{0:s} as watcher.".format(original_pr_author)
+    fixer_instructions = [
+      f"git fetch upstream",
+      f"git checkout upstream/{{tbranch}} -b {cherry_pick_branch}",
+      f"git cherry-pick -m 1 {{merge_commit}}",
+      f"# Fix the conflicts",
+      f"git cherry-pick --continue",
+      f"",
+      f"# If you have the GitHub CLI installed the PR can be made with",
+      f"gh pr create " + "\\",
+      f"     --label 'sweep:from {os.path.basename(source_branch)}' " + "\\",
+      f"     --base {{tbranch}} " + "\\",
+      f"     --repo {project_name} " + "\\",
+      f"     --title '{pr_title}' " + "\\",
+      f"     --body '{body_text}",
+    ]
     # only create PR if cherry-pick succeeded
     if failed:
-      logger.critical("Failed to cherry-pick '%s' into '%s':"
-                      "\n***** Hint: check merge conflicts on a local copy of this repository"
-                      "\n**********************************************"
-                      "\ngit checkout %s"
-                      "\ngit cherry-pick -m 1 %s"
-                      "\ngit status"
-                      "\n**********************************************", merge_commit, tbranch, tbranch, merge_commit)
+      logger.critical(
+          "Failed to cherry-pick '{merge_commit}' into '{tbranch}':\n"
+          "***** Hint: check merge conflicts on a local copy of this repository\n"
+          "**********************************************\n"
+          "%s\n"
+          "**********************************************\n",
+          '\n'.join(fixer_instructions).format(tbranch=tbranch, merge_commit=merge_commit)
+      )
       failed_branches.add((tbranch, merge_commit))
     else:
       logger.info("cherry-picked '%s' into '%s'", merge_commit, tbranch)
 
-      _title_ = _comment_1_ + tbranch + _comment_2_
       # create merge request
       try:
-        pr = repo.create_pull(title=_title_, body=pr_desc, head=cherry_pick_branch, base=tbranch)
+        pr = repo.create_pull(title=pr_title, body=pr_desc, head=cherry_pick_branch, base=tbranch)
       except GithubException as e:
         logger.critical("failed to create pull request for '%s' into '%s' with\n%s",
                         cherry_pick_branch, tbranch, e.data['message'])
         failed_branches.add((tbranch, merge_commit))
       else:
         good_branches.add(tbranch)
-        # adding original author as watcher
-        notification_text = "Adding original author @{0:s} as watcher.".format(original_pr_author)
-        pr.create_issue_comment(body=notification_text)
+        pr.create_issue_comment(body=body_text)
         pr.add_to_labels("sweep:from {0}".format(os.path.basename(source_branch)))
-        logger.debug("Sweeping PR %d to %s with a title: '%s'", PR_IID, tbranch, _title_)
+        logger.debug("Sweeping PR %d to %s with a title: '%s'", PR_IID, tbranch, pr_title)
         logger.debug("source_branch:%s: target_branch:%s: title:%s: descr:%s:",
-                     cherry_pick_branch, tbranch, _title_, pr_desc)
+                     cherry_pick_branch, tbranch, pr_title, pr_desc)
         for label in pr.get_labels():
           logger.debug("label: %s", label.name)
 
   # compile comment about sweep results
   if len(target_branches) > 0:
-    comment = "**Sweep summary**\n"
-    comment += "\nSweep ran in https://github.com/%s/actions/runs/%s" % (os.environ.get(
-        'GITHUB_REPOSITORY', 'GITHUB_REPOSITORY'), os.environ.get('GITHUB_RUN_ID', 'GITHUB_RUN_ID'))
+    comment_lines = [
+        "**Sweep summary**\n",
+        "Sweep ran in https://github.com/%s/actions/runs/%s" % (
+            os.environ.get('GITHUB_REPOSITORY', 'GITHUB_REPOSITORY'),
+            os.environ.get('GITHUB_RUN_ID', 'GITHUB_RUN_ID')
+        ),
+    ]
     if good_branches:
-      comment += "\nSuccessful:\n* " + "\n* ".join(sorted(good_branches)) + "\n"
+      comment_lines += ["Successful:"] + [f"* {x}" for x in sorted(good_branches)]
     if failed_branches:
-      comment += "\nFailed:"
-      for failed_branch in failed_branches:
-        comment += "\n* **{0}**".format(failed_branch[0])
-        comment += "\n  cherry-pick {0} into {1} failed".format(failed_branch[1], failed_branch[0])
-        comment += "\n  check merge conflicts on a local copy of this repository"
-        comment += "\n  ```"
-        comment += "\n  git checkout {0}".format(failed_branch[0])
-        comment += "\n  git cherry-pick -m 1 {0}".format(failed_branch[1])
-        comment += "\n  git status"
-        comment += "\n  ```"
+      comment_lines += ["Failed:"]
+      for tbranch, merge_commit in failed_branches:
+        comment_lines += [
+            f"* **{tbranch}**",
+            f"  cherry-pick {merge_commit} into {tbranch} failed",
+            f"  check merge conflicts on a local copy of this repository",
+            f"  ```bash",
+            "  " + '  \n'.join(fixer_instructions),
+            f"  ```",
+        ]
       # add label to original PR indicating cherry-pick problem
       pr_handle.add_to_labels("sweep:failed")
 
     # add sweep summary to PR in GitHub
     try:
-      pr_handle.create_issue_comment(body=comment)
+      pr_handle.create_issue_comment(body="\n".join(comment_lines))
     except GithubException as e:
       logger.critical("failed to add comment with sweep summary with\n{0:s}".format(e.data['message']))
   return
@@ -378,7 +398,7 @@ def main():
   parser.add_argument("-g", "--strategy", dest="strategy", default="cherry-pick",
                       help="cheery-pick the merge commit or merge it (options: cherry-pick or merge)")
   parser.add_argument("-t", "--token", required=True,
-                      help="GitHub Personal Acess Token (PAT)")
+                      help="GitHub Personal Access Token (PAT)")
   parser.add_argument("-u", "--until", default="now",
                       help="end of time interval for sweeping PR (e.g. 1 hour ago)")
   parser.add_argument(
@@ -467,7 +487,7 @@ def main():
   for pr in PR_list:
     logging.debug("")
     logging.debug("===== Next PR: %s ======", pr)
-    cherryPickPr(pr, args.branch, target_branch_rules, repo, args.strategy, args.dry_run)
+    cherryPickPr(pr, args.branch, target_branch_rules, repo, args.strategy, dry_run=args.dry_run, project_name=args.project_name)
 
   # change back to initial directory
   os.chdir(current_dir)
