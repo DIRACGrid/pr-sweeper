@@ -9,7 +9,7 @@ inputs:
     required: false
     default: 'auto'
   github-pat:
-    description: 'GitHub Personal Acess Token (PAT)'
+    description: 'GitHub Personal Access Token (PAT)'
     required: true
     default: ''
   project-name:
@@ -48,8 +48,9 @@ runs:
       env:
         THIS: ${{ github.action_path }}
         BRANCH: ${{ inputs.branch }}
-        GITHUB_PAT : ${{ inputs.github-pat }}
-        PROJECT_NAME : ${{ inputs.project-name }}
+        GITHUB_PAT: ${{ inputs.github-pat }}
+        PROJECT_NAME: ${{ inputs.project-name }}
+        PR_PROJECT_NAME: ${{ inputs.pr-project-name }}
         SINCE: ${{ inputs.since }}
         STRATEGY: ${{ inputs.strategy }}
         UNTIL: ${{ inputs.until }}

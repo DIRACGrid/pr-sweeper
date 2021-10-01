@@ -154,6 +154,7 @@ def cherryPickPr(
     source_branch,
     target_branch_rules,
     repo,
+    pr_repo,
     strategy,
     project_name,
     dry_run=False,
@@ -324,7 +325,7 @@ def cherryPickPr(
         # create remote branch for containing the cherry-pick commit
         cherry_pick_branch = "cherry-pick-2-{0}-{1}".format(merge_commit, tbranch)
         try:
-            repo.create_git_ref(
+            pr_repo.create_git_ref(
                 ref="refs/heads/" + cherry_pick_branch,
                 sha=repo.get_branch(tbranch).commit.sha,
             )
@@ -338,7 +339,7 @@ def cherryPickPr(
         else:
             if strategy == "merge":
                 try:
-                    repo.merge(cherry_pick_branch, commit.sha)
+                    pr_repo.merge(cherry_pick_branch, commit.sha)
                 except GithubException as e:
                     logger.critical(
                         "failed to merge merge commit, error: %s", e.data["message"]
@@ -488,16 +489,19 @@ def main():
     parser.add_argument(
         "-d",
         "--dry-run",
-        dest="dry_run",
         action="store_true",
         help="only perform a test run without actually modifying anything",
     )
     parser.add_argument(
         "-p",
         "--project-name",
-        dest="project_name",
         required=True,
         help="GitHub project with namespace (e.g. user/my-project)",
+    )
+    parser.add_argument(
+        "--pr-project-name",
+        required=True,
+        help="The GitHub project with namespace for creating the PR from",
     )
     parser.add_argument(
         "-s",
@@ -508,7 +512,6 @@ def main():
     parser.add_argument(
         "-g",
         "--strategy",
-        dest="strategy",
         default="cherry-pick",
         help="cheery-pick the merge commit or merge it (options: cherry-pick or merge)",
     )
@@ -576,9 +579,14 @@ def main():
     # get Github API handler
     gh = github.Github(args.token)
     try:
-        # get Github project object
         repo = gh.get_repo(args.project_name)
         logging.debug("retrieved Github project handle")
+    except GithubException as e:
+        logging.critical("error communication with Github API '%s'", e.data["message"])
+        sys.exit(1)
+    try:
+        pr_repo = gh.get_repo(args.pr_project_name)
+        logging.debug("retrieved Github PR project handle")
     except GithubException as e:
         logging.critical("error communication with Github API '%s'", e.data["message"])
         sys.exit(1)
@@ -626,6 +634,7 @@ def main():
             args.branch,
             target_branch_rules,
             repo,
+            pr_repo,
             args.strategy,
             dry_run=args.dry_run,
             project_name=args.project_name,

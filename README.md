@@ -48,6 +48,7 @@ The following parameters are supported:
  - `branch`: remote branch whose merge commits should be swept (default: `auto` - branch the action if executed on)
  - `github-pat`: [GitHub Personal Access Token](https://github.com/settings/tokens)
  - `project-name`: GitHub project with namespace e.g. user/my-project (default: `auto` - inferred from the action environment)
+ - `pr-project-name`: An alternative GitHub project with namespace that where the branches will be pushed
  - `since`: start of time interval for sweeping PR (default: `1 day ago`)
  - `strategy`: option if you want to cheery-pick the merge commit or merge it (options: `merge` or `cherry-pick`)
  - `until`: end of time interval for sweeping PR (default: `now`)
