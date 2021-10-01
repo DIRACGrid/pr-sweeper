@@ -405,11 +405,12 @@ def cherryPickPr(
             time.sleep(15)
 
             # create merge request
+            base_fork_name = os.path.dirname(pr_project_name)
             try:
                 pr = repo.create_pull(
                     title=pr_title,
                     body=pr_desc,
-                    head=f"{pr_project_name}:{cherry_pick_branch}",
+                    head=f"{base_fork_name}:{cherry_pick_branch}",
                     base=tbranch,
                 )
             except GithubException as e:
@@ -424,7 +425,7 @@ def cherryPickPr(
                         tbranch,
                         merge_commit,
                         f"Failed to open the PR, try to open a PR from "
-                        f"{os.path.dirname(pr_project_name)}:{cherry_pick_branch} "
+                        f"{base_fork_name}:{cherry_pick_branch} "
                         f"to {tbranch}",
                     )
                 )
