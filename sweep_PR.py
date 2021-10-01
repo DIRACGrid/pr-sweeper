@@ -17,6 +17,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 from pprint import pformat
 import yaml
 
@@ -401,6 +402,7 @@ def cherryPickPr(
             failed_branches.add((tbranch, merge_commit, "\n".join(fixer_instructions)))
         else:
             logger.info("cherry-picked '%s' into '%s'", merge_commit, tbranch)
+            time.sleep(15)
 
             # create merge request
             try:
