@@ -353,14 +353,19 @@ def cherryPickPr(
                 status, _, err = executeCommandWithRetry(
                     f"git cherry-pick -m 1 {commit.sha}"
                 )
-                _, _, _ = executeCommandWithRetry(
-                    f"git push origin {cherry_pick_branch}"
-                )
-                if status != 0:
+                if status == 0:
+                    status, _, err = executeCommandWithRetry(
+                        f"git push origin {cherry_pick_branch}"
+                    )
+                    if status != 0:
+                        logger.critical(f"failed to push, error: {err}")
+                        failed = True
+                else:
                     logger.critical(
                         "failed to cherry pick merge commit, error: %s", err
                     )
                     failed = True
+                    status, _, err = executeCommandWithRetry("git cherry-pick --abort")
             else:
                 logger.critical(
                     "invalid strategy! Choose merge or cheery-pick for strategy"
