@@ -618,7 +618,7 @@ def main():
         target_branch_rules = {}
 
     # get list of PRs in relevant period
-    PR_list = getListOfMergeCommits(f"upstream/{args.branch}", args.since, args.until)
+    PR_list = getListOfMergeCommits(args.branch, args.since, args.until)
     if not PR_list:
         logging.info(
             "no PRs to '%s' found in period from %s until %s",
