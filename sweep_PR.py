@@ -346,15 +346,14 @@ def cherryPickPr(
                     )
                     failed = True
             elif strategy == "cherry-pick":
+                _, _, _ = executeCommandWithRetry("git fetch upstream")
                 _, _, _ = executeCommandWithRetry("git fetch origin")
-                _, _, _ = executeCommandWithRetry(
-                    "git checkout {0}".format(cherry_pick_branch)
-                )
+                _, _, _ = executeCommandWithRetry(f"git checkout {cherry_pick_branch}")
                 status, _, err = executeCommandWithRetry(
-                    "git cherry-pick -m 1 {0}".format(commit.sha)
+                    f"git cherry-pick -m 1 {commit.sha}"
                 )
                 _, _, _ = executeCommandWithRetry(
-                    "git push origin {0}".format(cherry_pick_branch)
+                    f"git push origin {cherry_pick_branch}"
                 )
                 if status != 0:
                     logger.critical(
@@ -454,7 +453,7 @@ def cherryPickPr(
                     f"  cherry-pick {merge_commit} into {tbranch} failed",
                     f"  check merge conflicts on a local copy of this repository",
                     f"  ```bash",
-                    "  " + "  \n".join(fixer_instructions),
+                    "  " + "\n  ".join(fixer_instructions),
                     f"  ```",
                 ]
             # add label to original PR indicating cherry-pick problem
@@ -590,6 +589,10 @@ def main():
     except GithubException as e:
         logging.critical("error communication with Github API '%s'", e.data["message"])
         sys.exit(1)
+    executeCommandWithRetry("git remote rename origin upstream")
+    executeCommandWithRetry(
+        f"git remote add origin https://{args.token}@github.com/{args.pr_project_name}.git"
+    )
 
     # get top-level directory of git repository (specific to current directory structure)
     workdir = os.path.abspath(args.root)
