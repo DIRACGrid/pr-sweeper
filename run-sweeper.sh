@@ -2,7 +2,7 @@
 set -e
 
 if [ "${BRANCH}" == "auto" ]; then
-  export BRANCH="origin/$(sed 's@.*/@@' <<< $GITHUB_REF)"
+  export BRANCH="upstream/$(sed 's@.*/@@' <<< $GITHUB_REF)"
 fi
 
 if [ -z "${GITHUB_PAT}" ]; then
