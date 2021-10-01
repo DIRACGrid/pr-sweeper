@@ -16,6 +16,10 @@ inputs:
     description: 'GitHub project with namespace (e.g. user/my-project)'
     required: false
     default: 'auto'
+  pr-project-name:
+    description: 'GitHub project with namespace for pushing the PR branch'
+    required: false
+    default: ''
   since:
     description: 'start of time interval for sweeping PR (e.g. 1 day ago)'
     required: false
