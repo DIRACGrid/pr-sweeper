@@ -371,31 +371,28 @@ def cherryPickPr(
         body_text = "Adding original author @{0:s} as watcher.".format(
             original_pr_author
         )
-        fixer_instructions = [
-            f"git fetch upstream",
-            f"git checkout upstream/{tbranch} -b {cherry_pick_branch}",
-            f"git cherry-pick -m 1 {merge_commit}",
-            f"# Fix the conflicts",
-            f"git cherry-pick --continue",
-            f"",
-            f"# If you have the GitHub CLI installed the PR can be made with",
-            f"gh pr create " + "\\",
-            f"     --label 'sweep:from {os.path.basename(source_branch)}' " + "\\",
-            f"     --base {tbranch} " + "\\",
-            f"     --repo {project_name} " + "\\",
-            f"     --title $'" + pr_title.replace("'", "\\'") + "' " + "\\",
-            f"     --body $'" + body_text.replace("'", "\\'") + "'",
-        ]
         # only create PR if cherry-pick succeeded
         if failed:
-            logger.critical(
-                f"Failed to cherry-pick '{merge_commit}' into '{tbranch}':\n"
-                "***** Hint: check merge conflicts on a local copy of this repository\n"
-                "**********************************************\n"
-                "%s\n"
-                "**********************************************\n",
-                "\n".join(fixer_instructions),
-            )
+            fixer_instructions = [
+                f"cherry-pick {merge_commit} into {tbranch} failed",
+                f"check merge conflicts on a local copy of this repository",
+                f"```bash",
+                f"git fetch upstream",
+                f"git checkout upstream/{tbranch} -b {cherry_pick_branch}",
+                f"git cherry-pick -m 1 {merge_commit}",
+                f"# Fix the conflicts",
+                f"git cherry-pick --continue",
+                f"",
+                f"# If you have the GitHub CLI installed the PR can be made with",
+                f"gh pr create " + "\\",
+                f"     --label 'sweep:from {os.path.basename(source_branch)}' " + "\\",
+                f"     --base {tbranch} " + "\\",
+                f"     --repo {project_name} " + "\\",
+                f"     --title $'" + pr_title.replace("'", "\\'") + "' " + "\\",
+                f"     --body $'" + body_text.replace("'", "\\'") + "'",
+                f"```",
+            ]
+            logger.critical("\n".join(fixer_instructions))
             failed_branches.add((tbranch, merge_commit, "\n".join(fixer_instructions)))
         else:
             logger.info("cherry-picked '%s' into '%s'", merge_commit, tbranch)
@@ -419,7 +416,9 @@ def cherryPickPr(
                     (
                         tbranch,
                         merge_commit,
-                        f"Open a PR from {os.path.dirname(pr_project_name)}:{cherry_pick_branch} to {tbranch}",
+                        f"Failed to open the PR, try to open a PR from "
+                        f"{os.path.dirname(pr_project_name)}:{cherry_pick_branch} "
+                        f"to {tbranch}",
                     )
                 )
             else:
@@ -458,11 +457,7 @@ def cherryPickPr(
             for tbranch, merge_commit, failed_branches in failed_branches:
                 comment_lines += [
                     f"* **{tbranch}**",
-                    f"  cherry-pick {merge_commit} into {tbranch} failed",
-                    f"  check merge conflicts on a local copy of this repository",
-                    f"  ```bash",
                     f"  " + failed_branches.replace("\n", "\n  "),
-                    f"  ```",
                 ]
             # add label to original PR indicating cherry-pick problem
             pr_handle.add_to_labels("sweep:failed")
