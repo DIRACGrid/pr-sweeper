@@ -201,10 +201,10 @@ def cherryPickPr(
     original_pr_author = pr_handle.user.login
     logger.debug("original_pr_author: %s", original_pr_author)
 
-    pr_title = pr_handle.title
+    orig_pr_title = pr_handle.title
     # Remove any prefixes like [v7r2]
-    if match := re.fullmatch(r"\[[^\]]+\]\s+(.+)", pr_title):
-        pr_title = match.groups()[0]
+    if match := re.fullmatch(r"\[[^\]]+\]\s+(.+)", orig_pr_title):
+        orig_pr_title = match.groups()[0]
 
     # handle sweep labels
     labels = set(label.name for label in pr_handle.get_labels())
@@ -290,28 +290,6 @@ def cherryPickPr(
 
     pr_handle.set_labels(*labels)
 
-    # get initial PR commit title and description
-    _, pr_desc, _ = executeCommandWithRetry(
-        'git show {0} --pretty=format:"%b"'.format(merge_commit)
-    )
-
-    _s_ = source_branch.split("/")
-    if len(_s_) == 2:
-        source_branch_strip = _s_[1]
-    elif len(_s_) == 1:
-        source_branch_strip = _s_[0]
-    else:
-        source_branch_strip = "undefined branch"
-
-    _comment_1_ = "Sweeping #" + str(PR_IID) + " from " + source_branch_strip + " to "
-    _comment_2_ = ".\n" + pr_desc
-
-    print(target_branches)
-    for _t_ in target_branches:
-        logger.debug(
-            "PR title for target branch %s: '%s'", _t_, _comment_1_ + _t_ + _comment_2_
-        )
-
     # perform cherry-pick to all target branches
     for tbranch in target_branches:
 
@@ -360,7 +338,7 @@ def cherryPickPr(
                 )
                 if status == 0:
                     status, _, err = executeCommandWithRetry(
-                        f"git commit --amend -m 'sweep: #{PR_IID} {pr_title}'"
+                        f"git commit --amend -m 'sweep: #{PR_IID} {orig_pr_title}'"
                     )
                     if status != 0:
                         logger.critical(f"edit commit message, error: {err}")
@@ -384,9 +362,11 @@ def cherryPickPr(
                 )
                 failed = True
 
-        pr_title = _comment_1_ + tbranch + _comment_2_
-        body_text = "Adding original author @{0:s} as watcher.".format(
-            original_pr_author
+        new_pr_title = f"[sweep:{tbranch.replace('rel-', '')}] {orig_pr_title}"
+        body_text = (
+            f"Sweep #{PR_IID} {orig_pr_title} to {tbranch}.\n"
+            "\n"
+            f"Adding original author @{original_pr_author:s} as watcher."
         )
         # only create PR if cherry-pick succeeded
         if failed:
@@ -405,7 +385,7 @@ def cherryPickPr(
                 f"     --label 'sweep:from {os.path.basename(source_branch)}' " + "\\",
                 f"     --base {tbranch} " + "\\",
                 f"     --repo {project_name} " + "\\",
-                f"     --title $'" + pr_title.replace("'", "\\'") + "' " + "\\",
+                f"     --title $'" + new_pr_title.replace("'", "\\'") + "' " + "\\",
                 f"     --body $'" + body_text.replace("'", "\\'") + "'",
                 f"```",
             ]
@@ -418,8 +398,8 @@ def cherryPickPr(
             base_fork_name = os.path.dirname(pr_project_name)
             try:
                 pr = repo.create_pull(
-                    title=pr_title,
-                    body=pr_desc,
+                    title=new_pr_title,
+                    body=body_text,
                     head=f"{base_fork_name}:{cherry_pick_branch}",
                     base=tbranch,
                 )
@@ -441,19 +421,18 @@ def cherryPickPr(
                 )
             else:
                 good_branches.add(tbranch)
-                pr.create_issue_comment(body=body_text)
                 pr.add_to_labels(
                     "sweep:from {0}".format(os.path.basename(source_branch))
                 )
                 logger.debug(
-                    "Sweeping PR %d to %s with a title: '%s'", PR_IID, tbranch, pr_title
+                    f"Sweeping PR {PR_IID} to {tbranch} with a title: '{new_pr_title}'"
                 )
                 logger.debug(
                     "source_branch:%s: target_branch:%s: title:%s: descr:%s:",
                     cherry_pick_branch,
                     tbranch,
-                    pr_title,
-                    pr_desc,
+                    new_pr_title,
+                    body_text,
                 )
                 for label in pr.get_labels():
                     logger.debug("label: %s", label.name)
