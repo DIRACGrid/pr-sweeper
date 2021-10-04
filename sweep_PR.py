@@ -201,6 +201,11 @@ def cherryPickPr(
     original_pr_author = pr_handle.user.login
     logger.debug("original_pr_author: %s", original_pr_author)
 
+    pr_title = pr_handle.title
+    # Remove any prefixes like [v7r2]
+    if match := re.fullmatch(r"\[[^\]]+\]\s+(.+)", pr_title):
+        pr_title = match.groups()[0]
+
     # handle sweep labels
     labels = set(label.name for label in pr_handle.get_labels())
     for label in labels:
@@ -355,11 +360,18 @@ def cherryPickPr(
                 )
                 if status == 0:
                     status, _, err = executeCommandWithRetry(
-                        f"git push origin {cherry_pick_branch}"
+                        f"git commit --amend -m 'sweep: #{PR_IID} {pr_title}'"
                     )
                     if status != 0:
-                        logger.critical(f"failed to push, error: {err}")
+                        logger.critical(f"edit commit message, error: {err}")
                         failed = True
+                    else:
+                        status, _, err = executeCommandWithRetry(
+                            f"git push origin {cherry_pick_branch}"
+                        )
+                        if status != 0:
+                            logger.critical(f"failed to push, error: {err}")
+                            failed = True
                 else:
                     logger.critical(
                         "failed to cherry pick merge commit, error: %s", err
