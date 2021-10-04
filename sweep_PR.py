@@ -364,7 +364,7 @@ def cherryPickPr(
 
         new_pr_title = f"[sweep:{tbranch.replace('rel-', '')}] {orig_pr_title}"
         body_text = (
-            f"Sweep #{PR_IID} {orig_pr_title} to {tbranch}.\n"
+            f"Sweep #{PR_IID} `{orig_pr_title}` to `{tbranch}`.\n"
             "\n"
             f"Adding original author @{original_pr_author:s} as watcher."
         )
