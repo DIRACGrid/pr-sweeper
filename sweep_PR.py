@@ -379,6 +379,8 @@ def cherryPickPr(
                 f"git cherry-pick -m 1 {merge_commit}",
                 f"# Fix the conflicts",
                 f"git cherry-pick --continue",
+                f"git commit --amend -m 'sweep: #{PR_IID} {orig_pr_title}'",
+                f"git push -u origin {cherry_pick_branch}",
                 f"",
                 f"# If you have the GitHub CLI installed the PR can be made with",
                 f"gh pr create " + "\\",
