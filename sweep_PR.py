@@ -150,6 +150,7 @@ def getListOfMergeCommits(branch, since, until):
 
 
 def cherryPickPr(
+    gh,
     merge_commit,
     source_branch,
     target_branch_rules,
@@ -198,8 +199,16 @@ def cherryPickPr(
         return
 
     # save original author so that we can add as watcher
-    original_pr_author = pr_handle.user.login
+    if match := re.search(r"Adding original author @(.+) as watcher.", pr_handle.body):
+        original_pr_author = match.groups()[0]
+    else:
+        original_pr_author = pr_handle.user.login
     logger.debug("original_pr_author: %s", original_pr_author)
+
+    pr_user = gh.get_user(original_pr_author)
+    author_info = repo.get_commits(author=pr_user)[0].commit.author
+    pr_author = f"{author_info.name} <{author_info.email}>"
+    logger.debug(f"Commits will be made as: {pr_author}")
 
     orig_pr_title = pr_handle.title
     # Remove any prefixes like [v7r2]
@@ -338,7 +347,7 @@ def cherryPickPr(
                 )
                 if status == 0:
                     status, _, err = executeCommandWithRetry(
-                        f"git commit --amend -m 'sweep: #{PR_IID} {orig_pr_title}'"
+                        f"git commit --amend -m 'sweep: #{PR_IID} {orig_pr_title}' --author='{pr_author}'"
                     )
                     if status != 0:
                         logger.critical(f"edit commit message, error: {err}")
@@ -637,6 +646,7 @@ def main():
         logging.debug("")
         logging.debug("===== Next PR: %s ======", pr)
         cherryPickPr(
+            gh,
             pr,
             args.branch,
             target_branch_rules,
