@@ -383,7 +383,7 @@ def cherryPickPr(
         body_text = (
             f"Sweep #{PR_IID} `{orig_pr_title}` to `{tbranch}`.\n"
             "\n"
-            f"Adding original author @{original_pr_author:s} as watcher."
+            f"Adding original author @{original_pr_author:s} as watcher.\n"
             "\n"
             f"{release_notes}"
         )
