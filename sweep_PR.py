@@ -349,7 +349,7 @@ def cherryPickPr(
                 _, _, _ = executeCommandWithRetry("git fetch origin")
                 _, _, _ = executeCommandWithRetry(f"git checkout {cherry_pick_branch}")
                 status, _, err = executeCommandWithRetry(
-                    f"git cherry-pick -m 1 {commit.sha}"
+                    f"git cherry-pick -x -m 1 {commit.sha}"
                 )
                 if status == 0:
                     status, _, err = executeCommandWithRetry(
@@ -393,7 +393,7 @@ def cherryPickPr(
                 f"```bash",
                 f"git fetch upstream",
                 f"git checkout upstream/{tbranch} -b {cherry_pick_branch}",
-                f"git cherry-pick -m 1 {merge_commit}",
+                f"git cherry-pick -x -m 1 {merge_commit}",
                 f"# Fix the conflicts",
                 f"git cherry-pick --continue",
                 f"git commit --amend -m 'sweep: #{PR_IID} {orig_pr_title}' --author='{pr_author}'",
