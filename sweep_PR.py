@@ -26,7 +26,7 @@ from github.GithubException import GithubException
 
 def executeCommandWithRetry(cmd, max_attempts=1, logger=logging):
     """
-    Execute shell comamnd with possible retry
+    Execute shell command with possible retry
     """
     logger.debug("working directory: %s", os.getcwd())
     logger.debug("running command '%s' with max attempts %d", cmd, max_attempts)
@@ -197,6 +197,12 @@ def cherryPickPr(
     else:
         logger.critical("failed to determine PR IID")
         return
+
+    # save the release notes
+    release_notes = ""
+    if match := re.search(r"(BEGINRELEASENOTES.*ENDRELEASENOTES)", pr_handle.body):
+        release_notes = match.groups()[0]
+    logger.debug("release_notes: %s", release_notes)
 
     # save original author so that we can add as watcher
     if match := re.search(r"Adding original author @(.+) as watcher.", pr_handle.body):
@@ -376,6 +382,8 @@ def cherryPickPr(
             f"Sweep #{PR_IID} `{orig_pr_title}` to `{tbranch}`.\n"
             "\n"
             f"Adding original author @{original_pr_author:s} as watcher."
+            "\n"
+            f"{release_notes}"
         )
         # only create PR if cherry-pick succeeded
         if failed:
@@ -388,7 +396,7 @@ def cherryPickPr(
                 f"git cherry-pick -m 1 {merge_commit}",
                 f"# Fix the conflicts",
                 f"git cherry-pick --continue",
-                f"git commit --amend -m 'sweep: #{PR_IID} {orig_pr_title}'",
+                f"git commit --amend -m 'sweep: #{PR_IID} {orig_pr_title}' --author='{pr_author}'",
                 f"git push -u origin {cherry_pick_branch}",
                 f"",
                 f"# If you have the GitHub CLI installed the PR can be made with",
