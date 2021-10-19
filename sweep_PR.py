@@ -200,7 +200,9 @@ def cherryPickPr(
 
     # save the release notes
     release_notes = ""
-    if match := re.search(r"(BEGINRELEASENOTES.*ENDRELEASENOTES)", pr_handle.body):
+    if match := re.search(
+        r"(BEGINRELEASENOTES(?:.|\s)+ENDRELEASENOTES)", pr_handle.body
+    ):
         release_notes = match.groups()[0]
     logger.debug("release_notes: %s", release_notes)
 
