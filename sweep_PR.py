@@ -201,13 +201,15 @@ def cherryPickPr(
     # save the release notes
     release_notes = ""
     if match := re.search(
-        r"(BEGINRELEASENOTES(?:.|\s)+ENDRELEASENOTES)", pr_handle.body
+        r"(BEGINRELEASENOTES(?:.|\s)+ENDRELEASENOTES)", pr_handle.body or ""
     ):
         release_notes = match.groups()[0]
     logger.debug("release_notes: %s", release_notes)
 
     # save original author so that we can add as watcher
-    if match := re.search(r"Adding original author @(.+) as watcher.", pr_handle.body):
+    if match := re.search(
+        r"Adding original author @(.+) as watcher.", pr_handle.body or ""
+    ):
         original_pr_author = match.groups()[0]
     else:
         original_pr_author = pr_handle.user.login
