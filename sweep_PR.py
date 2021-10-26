@@ -486,7 +486,19 @@ def cherryPickPr(
 
         # add sweep summary to PR in GitHub
         try:
-            pr_handle.create_issue_comment(body="\n".join(comment_lines))
+            newComment = pr_handle.create_issue_comment(body="\n".join(comment_lines))
+
+            # If the sweeping failed,
+            # create an issue to keep a visible track of the failed sweep
+            if failed_branches:
+
+                issue_title = f"Sweep failed for PR {orig_pr_title}"
+                issue_body = f"{issue_title}\nSee {newComment.html_url}"
+                issue = repo.create_issue(
+                    issue_title, body=issue_body, assignee=original_pr_author
+                )
+                issue.add_to_labels("sweep:failed")
+
         except GithubException as e:
             logger.critical(
                 "failed to add comment with sweep summary with\n{0:s}".format(
