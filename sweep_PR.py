@@ -19,6 +19,7 @@ import subprocess
 import sys
 from pprint import pformat
 import yaml
+import shlex
 
 import github
 from github.GithubException import GithubException
@@ -391,25 +392,26 @@ def cherryPickPr(
         )
         # only create PR if cherry-pick succeeded
         if failed:
+            body_text += "\nCloses #@@@FAILED_ISSUE_ID@@@"
             fixer_instructions = [
                 f"cherry-pick {merge_commit} into {tbranch} failed",
                 f"check merge conflicts on a local copy of this repository",
                 f"```bash",
                 f"git fetch upstream",
-                f"git checkout upstream/{tbranch} -b {cherry_pick_branch}",
-                f"git cherry-pick -x -m 1 {merge_commit}",
+                f"git checkout upstream/{shlex.quote(tbranch)} -b {shlex.quote(cherry_pick_branch)}",
+                f"git cherry-pick -x -m 1 {shlex.quote(merge_commit)}",
                 f"# Fix the conflicts",
                 f"git cherry-pick --continue",
-                f"git commit --amend -m 'sweep: #{PR_IID} {orig_pr_title}' --author='{pr_author}'",
-                f"git push -u origin {cherry_pick_branch}",
+                f"git commit --amend -m {shlex.quote('sweep: #' + str(PR_IID) + ' ' + orig_pr_title)} --author={shlex.quote(pr_author)}",
+                f"git push -u origin {shlex.quote(cherry_pick_branch)}",
                 f"",
                 f"# If you have the GitHub CLI installed the PR can be made with",
-                f"gh pr create " + "\\",
-                f"     --label 'sweep:from {os.path.basename(source_branch)}' " + "\\",
-                f"     --base {tbranch} " + "\\",
-                f"     --repo {project_name} " + "\\",
-                f"     --title $'" + new_pr_title.replace("'", "\\'") + "' " + "\\",
-                f"     --body $'" + body_text.replace("'", "\\'") + "'",
+                f"gh pr create \\",
+                f"     --label {shlex.quote('sweep:from ' + os.path.basename(source_branch))} \\",
+                f"     --base {shlex.quote(tbranch)} \\",
+                f"     --repo {shlex.quote(project_name)} \\",
+                f"     --title {shlex.quote(body_text)} \\",
+                f"     --body {shlex.quote(body_text)}",
                 f"```",
             ]
             logger.critical("\n".join(fixer_instructions))
@@ -486,18 +488,20 @@ def cherryPickPr(
 
         # add sweep summary to PR in GitHub
         try:
-            newComment = pr_handle.create_issue_comment(body="\n".join(comment_lines))
+            pr_body = "\n".join(comment_lines)
 
-            # If the sweeping failed,
-            # create an issue to keep a visible track of the failed sweep
             if failed_branches:
-
                 issue_title = f"Sweep failed for PR {orig_pr_title}"
-                issue_body = f"{issue_title}\nSee {newComment.html_url}"
+                issue_body = f"{issue_title}\nSee {pr_handle.html_url}"
                 issue = repo.create_issue(
                     issue_title, body=issue_body, assignee=original_pr_author
                 )
                 issue.add_to_labels("sweep:failed")
+                pr_body = pr_body.replace("@@@FAILED_ISSUE_ID@@@", str(id))
+
+            # If the sweeping failed,
+            # create an issue to keep a visible track of the failed sweep
+            pr_handle.create_issue_comment(body=pr_body)
 
         except GithubException as e:
             logger.critical(
