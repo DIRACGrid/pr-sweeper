@@ -410,7 +410,7 @@ def cherryPickPr(
                 f"     --label {shlex.quote('sweep:from ' + os.path.basename(source_branch))} \\",
                 f"     --base {shlex.quote(tbranch)} \\",
                 f"     --repo {shlex.quote(project_name)} \\",
-                f"     --title {shlex.quote(body_text)} \\",
+                f"     --title {shlex.quote(new_pr_title)} \\",
                 f"     --body {shlex.quote(body_text)}",
                 f"```",
             ]
@@ -497,7 +497,7 @@ def cherryPickPr(
                     issue_title, body=issue_body, assignee=original_pr_author
                 )
                 issue.add_to_labels("sweep:failed")
-                pr_body = pr_body.replace("@@@FAILED_ISSUE_ID@@@", str(id))
+                pr_body = pr_body.replace("@@@FAILED_ISSUE_ID@@@", str(issue.id))
 
             # If the sweeping failed,
             # create an issue to keep a visible track of the failed sweep
