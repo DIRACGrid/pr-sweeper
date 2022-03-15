@@ -497,7 +497,7 @@ def cherryPickPr(
                     issue_title, body=issue_body, assignee=original_pr_author
                 )
                 issue.add_to_labels("sweep:failed")
-                pr_body = pr_body.replace("@@@FAILED_ISSUE_ID@@@", str(issue.id))
+                pr_body = pr_body.replace("@@@FAILED_ISSUE_ID@@@", str(issue.number))
 
             # If the sweeping failed,
             # create an issue to keep a visible track of the failed sweep
