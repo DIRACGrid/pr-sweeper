@@ -219,7 +219,7 @@ def cherryPickPr(
     pr_user = gh.get_user(original_pr_author)
     pr_author = ""
     author_infos = repo.get_commits(author=pr_user)
-    if author_infos:
+    if len(author_infos) > 0:
         author_info = author_infos[0].commit.author
         pr_author = f"{author_info.name} <{author_info.email}>"
         logger.debug(f"Commits will be made as: {pr_author}")
