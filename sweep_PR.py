@@ -217,9 +217,12 @@ def cherryPickPr(
     logger.debug("original_pr_author: %s", original_pr_author)
 
     pr_user = gh.get_user(original_pr_author)
-    author_info = repo.get_commits(author=pr_user)[0].commit.author
-    pr_author = f"{author_info.name} <{author_info.email}>"
-    logger.debug(f"Commits will be made as: {pr_author}")
+    pr_author = ""
+    author_infos = repo.get_commits(author=pr_user)
+    if author_infos:
+        author_info = author_infos[0].commit.author
+        pr_author = f"{author_info.name} <{author_info.email}>"
+        logger.debug(f"Commits will be made as: {pr_author}")
 
     orig_pr_title = pr_handle.title
     # Remove any prefixes like [v7r2]
@@ -357,9 +360,10 @@ def cherryPickPr(
                     f"git cherry-pick -x -m 1 {commit.sha}"
                 )
                 if status == 0:
-                    status, _, err = executeCommandWithRetry(
-                        f"git commit --amend -m 'sweep: #{PR_IID} {orig_pr_title}' --author='{pr_author}'"
-                    )
+                    cmd = f"git commit --amend -m 'sweep: #{PR_IID} {orig_pr_title}'"
+                    if pr_author:
+                        cmd += f" --author='{pr_author}'"
+                    status, _, err = executeCommandWithRetry(cmd)
                     if status != 0:
                         logger.critical(f"edit commit message, error: {err}")
                         failed = True
