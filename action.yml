@@ -23,7 +23,7 @@ inputs:
   since:
     description: 'start of time interval for sweeping PR (e.g. 1 day ago)'
     required: false
-    default: '1 day ago'
+    default: '10 days ago'
   strategy:
     description: 'option if you want to cheery-pick the merge commit or merge it'
     required: false
