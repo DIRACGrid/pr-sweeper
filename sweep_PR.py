@@ -496,10 +496,11 @@ def cherryPickPr(
 
             if failed_branches:
                 issue_title = f"Sweep failed for PR {orig_pr_title}"
-                issue_body = f"{issue_title}\nSee {pr_handle.html_url}"
-                issue = repo.create_issue(
-                    issue_title, body=issue_body, assignee=original_pr_author
-                )
+                kwargs = {"body": f"{issue_title}\nSee {pr_handle.html_url}"}
+                # Issues can only be assigned to collaborators
+                if repo.has_in_collaborators(original_pr_author):
+                    kwargs["assignee"] = original_pr_author
+                issue = repo.create_issue(issue_title, **kwargs)
                 issue.add_to_labels("sweep:failed")
                 pr_body = pr_body.replace("@@@FAILED_ISSUE_ID@@@", str(issue.number))
 
