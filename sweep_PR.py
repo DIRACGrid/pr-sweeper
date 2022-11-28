@@ -360,7 +360,8 @@ def cherryPickPr(
                     f"git cherry-pick -x -m 1 {commit.sha}"
                 )
                 if status == 0:
-                    cmd = f"git commit --amend -m 'sweep: #{PR_IID} {orig_pr_title}'"
+                    commit_message = shlex.quote(f"sweep: #{PR_IID} {orig_pr_title}")
+                    cmd = f"git commit --amend -m {commit_message}"
                     if pr_author:
                         cmd += f" --author='{pr_author}'"
                     status, _, err = executeCommandWithRetry(cmd)
